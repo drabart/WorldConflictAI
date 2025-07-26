@@ -2,8 +2,8 @@ from Card import Card
 from random import shuffle
 
 class CardDeck:
-    drawPile : list[Card]
-    discardPile : list[Card]
+    drawPile: list[Card]
+    discardPile: list[Card]
 
     def __init__(self):
         self.drawPile = [Card.ACE, Card.KING, Card.QUEEN, Card.JACK, Card.TWO] * 3
@@ -25,17 +25,17 @@ class CardDeck:
     def shuffle(self) -> None:
         shuffle(self.drawPile)
 
-    def discard(self, discardedCard : Card) -> bool:
+    def discard(self, discarded_card: Card) -> bool:
         """Adds card to discard pile
 
         Args:
-            discardedCard (Card): discarded card
+            discarded_card (Card): discarded card
 
         Returns:
             bool: if the discarded card is Card.ANY, match is forfeited
         """
-        if discardedCard == Card.ANY:
+        if discarded_card == Card.ANY:
             return True
         
-        self.discardPile.append(discardedCard)
+        self.discardPile.append(discarded_card)
         return False
