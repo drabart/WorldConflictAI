@@ -2,25 +2,25 @@ from Move import Move
 from Card import Card
 
 class Inventory:
-    money : int
-    cards : list[Card]
+    money: int
+    cards: list[Card]
 
     def __init__(self) -> None:
         self.money = 2
         self.cards = []
 
-    def getLegalMoves(self, lastMove: Move) -> list[Move]:
+    def get_legal_moves(self, last_move: Move) -> list[Move]:
         """Gives list of possible moves based on the last move (any card could be bluffed, cards are not included in checking)
 
         Args:
-            lastMove (Move): last move done in sequence (if the sequence is empty Move.OK should be passed)
+            last_move (Move): last move done in sequence (if the sequence is empty Move.OK should be passed)
 
         Returns:
             list[Move]: list of all legal moves in the players position
         """
-        match lastMove:
+        match last_move:
             case Move.OK | Move.CALL_BLUFF:
-                possibleMoves : list[Move] = []
+                possibleMoves: list[Move] = []
 
                 if self.money >= 10:
                     return [Move.PLAY_AFFAIR]
