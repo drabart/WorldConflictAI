@@ -52,3 +52,6 @@ class Inventory:
             
             case Move.FORFEIT:
                 return []
+            
+    def __str__(self) -> str:
+        return f"{str(self.cards)}, {self.money} coins" 
