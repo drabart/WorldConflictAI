@@ -6,8 +6,12 @@ from Move import Move
 class HumanAgent(IAgent):
     player_info: PlayerInfo
 
-    def generate_give_card(self, card_preference: Card) -> Card:
+    def __init__(self) -> None:
         super().__init__()
+
+    def generate_give_card(self, state: PlayerInfo, card_preference: Card) -> Card:
+        self.player_info = state
+        
         print(f"Player {self.player_info.playerId + 1}")
         print(f"You are requested to give {card_preference}\nYou have {self.player_info.player}")
         raw_card = input()

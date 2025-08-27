@@ -8,7 +8,7 @@ class IAgent(ABC):
         super().__init__()
 
     @abstractmethod
-    def generate_give_card(self, card_preference: Card) -> Card:
+    def generate_give_card(self, state: PlayerInfo, card_preference: Card) -> Card:
         """Chooses which card to give
 
         Args:
