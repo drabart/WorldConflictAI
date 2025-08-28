@@ -2,6 +2,7 @@ from Move import Move
 from IAgent import IAgent
 from GameState import GameState, PlayerInfo
 from Card import Card
+from CardDeck import CardDeck
 from copy import deepcopy
 from typing import Sequence
 from Inventory import Inventory
@@ -58,7 +59,7 @@ def take_money(cost: int, inventory: Inventory) -> int:
     inventory.money -= cost
     return cost
 
-def take_card(state: GameState, player_id: int, card_preference: Card, inventory: Inventory, player: IAgent) -> Card:
+def take_card(card_preference: Card, inventory: Inventory, player: IAgent, state: PlayerInfo) -> Card:
     """Called by the game when the player is forced to discard
 
     Args:
@@ -70,8 +71,7 @@ def take_card(state: GameState, player_id: int, card_preference: Card, inventory
     Returns:
         Card: The card player decides to discard
     """
-    playerState = PlayerInfo(state, player_id)
-    card = player.generate_give_card(playerState, card_preference)
+    card = player.generate_give_card(state, card_preference)
     if card not in inventory.cards or (card_preference != Card.ANY and card != card_preference and card_preference in inventory.cards):
         # will be interpreted as forfeit
         return Card.ANY
@@ -103,112 +103,202 @@ class Game:
     def __init__(self, agents: Sequence[IAgent]):
         self.agents = agents
         self.new_game()
-
     
     def new_game(self):
-        self.game_state = GameState(2)
+        self.game_state.reset()
 
         for _ in range(2):
             for player in range(2):
                 draw = self.game_state.deck.draw()
                 give_card(draw, self.game_state.players[player])
 
+    def two_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        sequence = self.game_state.current_sequence
+        if len(sequence) > 2:
+            raise RuntimeError("Too many moves in a sequence")
+        
+        response = None if len(sequence) == 1 else sequence[1]
+
+        initial_player_info = PlayerInfo(self.game_state, initial_player_id)
+        turn_player_info = PlayerInfo(self.game_state, turn_player_id)
+
+        match response:
+            case Move.BLOCK_TWO_WITH_ACE:
+                # nothing, demand two and ace
+                initial_forfeit = deck.discard(take_card(Card.TWO, initial_inventory, initial_agent, initial_player_info))
+                give_card(deck.draw(), initial_inventory)
+
+                turn_forfeit = deck.discard(take_card(Card.ACE, turn_inventory, turn_agent, turn_player_info))
+                give_card(deck.draw(), turn_inventory)
+            case Move.BLOCK_TWO_WITH_TWO:
+                # nothing, demand two and two
+                initial_forfeit = deck.discard(take_card(Card.TWO, initial_inventory, initial_agent, initial_player_info))
+                give_card(deck.draw(), initial_inventory)
+
+                turn_forfeit = deck.discard(take_card(Card.TWO, turn_inventory, turn_agent, turn_player_info))
+                give_card(deck.draw(), turn_inventory)
+            case None:
+                give_money(2, initial_inventory)
+                take_money(2, turn_inventory)
+            case _:
+                raise RuntimeError("Invalid response")
+
+        return initial_forfeit, turn_forfeit
+
+    def jack_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        sequence = self.game_state.current_sequence
+        if len(sequence) > 2:
+            raise RuntimeError("Too many moves in a sequence")
+        
+        response = None if len(sequence) == 1 else sequence[1]
+
+        initial_player_info = PlayerInfo(self.game_state, initial_player_id)
+        turn_player_info = PlayerInfo(self.game_state, turn_player_id)
+
+        match response:
+            case Move.BLOCK_JACK_WITH_QUEEN:
+                # nothing, demand jack and queen
+                initial_forfeit = deck.discard(take_card(Card.JACK, initial_inventory, initial_agent, initial_player_info))
+                give_card(deck.draw(), initial_inventory)
+
+                turn_forfeit = deck.discard(take_card(Card.QUEEN, turn_inventory, turn_agent, turn_player_info))
+                give_card(deck.draw(), turn_inventory)
+
+            case None:
+                # pay, demand jack, demand card permanently
+                take_money(3, initial_inventory)
+
+                initial_forfeit = deck.discard(take_card(Card.JACK, initial_inventory, initial_agent, initial_player_info))
+                give_card(deck.draw(), initial_inventory)
+
+                turn_forfeit = deck.discard(take_card(Card.ANY, turn_inventory, turn_agent, turn_player_info))
+                if has_lost(turn_inventory):
+                    turn_forfeit = True
+        
+            case _:
+                raise RuntimeError("Invalid response")
+
+        return initial_forfeit, turn_forfeit
+
+    def king_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        # give money, demand king
+        give_money(3, initial_inventory)
+        initial_forfeit = deck.discard(take_card(Card.KING, initial_inventory, initial_agent, PlayerInfo(self.game_state, initial_player_id)))
+        give_card(deck.draw(), initial_inventory)
+
+        return initial_forfeit, turn_forfeit
+
+    def ace_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        initial_player_info = PlayerInfo(self.game_state, initial_player_id)
+
+        # demand ace, give 3 cards, demand 2 cards back
+        initial_forfeit = deck.discard(take_card(Card.ACE, initial_inventory, initial_agent, initial_player_info))
+        for _ in range(3):
+            draw = deck.draw()
+            give_card(draw, initial_inventory)
+        
+        take_card(Card.ANY, initial_inventory, initial_agent, initial_player_info)
+        take_card(Card.ANY, initial_inventory, initial_agent, initial_player_info)
+
+        return initial_forfeit, turn_forfeit
+    
+    def affair_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        # demand card permanently
+        take_money(7, initial_inventory)
+        turn_forfeit = deck.discard(take_card(Card.ANY, turn_inventory, turn_agent, PlayerInfo(self.game_state, turn_player_id)))
+        if has_lost(turn_inventory):
+            turn_forfeit = True
+
+        return initial_forfeit, turn_forfeit
+
+    def plus_one_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        give_money(1, initial_inventory)
+
+        return initial_forfeit, turn_forfeit
+    
+    def plus_two_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
+                  turn_player_id: int, turn_agent: IAgent, turn_inventory: Inventory) -> tuple[bool, bool]:
+        initial_forfeit = False
+        turn_forfeit = False
+
+        sequence = self.game_state.current_sequence
+        if len(sequence) > 2:
+            raise RuntimeError("Too many moves in a sequence")
+        
+        response = None if len(sequence) == 1 else sequence[1]
+
+        turn_player_info = PlayerInfo(self.game_state, turn_player_id)
+
+        match response:
+            case Move.BLOCK_PLUS_TWO_WITH_KING:
+                # nothing, demand king
+                turn_forfeit = deck.discard(take_card(Card.KING, turn_inventory, turn_agent, turn_player_info))
+                give_card(deck.draw(), turn_inventory)
+
+            case None:
+                give_money(2, initial_inventory)
+        
+            case _:
+                raise RuntimeError("Invalid response")
+
+        return initial_forfeit, turn_forfeit      
+
     def process_move(self):
         if not self.game_state.current_sequence:
             print("The processed move has an empty sequence")
             raise RuntimeError()
+        
         initial_player_id = self.game_state.initial_player
-        initialAgent = self.agents[initial_player_id]
-        initialAgentInventory = self.game_state.players[initial_player_id]
+        initial_agent = self.agents[initial_player_id]
+        initial_inventory = self.game_state.players[initial_player_id]
 
         turn_player_id = self.game_state.turnPlayer
-        turnAgent = self.agents[turn_player_id]
-        turnAgentInventory = self.game_state.players[turn_player_id]
+        turn_agent = self.agents[turn_player_id]
+        turn_inventory = self.game_state.players[turn_player_id]
 
         deck = self.game_state.deck
-        initialForfeit = False
-        turnForfeit = False
 
-        match self.game_state.current_sequence[0]:
-            case Move.PLAY_ACE:
-                # demand ace, give 3 cards, demand 2 cards back
-                initialForfeit = deck.discard(take_card(self.game_state, initial_player_id, Card.ACE, initialAgentInventory, initialAgent))
-                for _ in range(3):
-                    draw = deck.draw()
-                    give_card(draw, initialAgentInventory)
-                
-                take_card(self.game_state, initial_player_id, Card.ANY, initialAgentInventory, initialAgent)
-                take_card(self.game_state, initial_player_id, Card.ANY, initialAgentInventory, initialAgent)
+        start_functions = {
+            Move.PLAY_TWO: self.two_start,
+            Move.PLAY_JACK: self.jack_start,
+            Move.PLAY_KING: self.king_start,
+            Move.PLAY_ACE: self.ace_start,
+            Move.PLAY_AFFAIR: self.affair_start,
+            Move.PLAY_PLUS_ONE: self.plus_one_start,
+            Move.PLAY_PLUS_TWO: self.plus_two_start
+        }
 
-            case Move.PLAY_KING:
-                print("aaa", self.game_state.initial_player, self.game_state.current_sequence, initialAgentInventory)
-                # give money, demand king
-                give_money(3, initialAgentInventory)
-                initialForfeit = deck.discard(take_card(self.game_state, initial_player_id, Card.KING, initialAgentInventory, initialAgent))
-                give_card(deck.draw(), initialAgentInventory)
-
-            case Move.PLAY_JACK:
-                if len(self.game_state.current_sequence) > 1 and self.game_state.current_sequence[1] == Move.BLOCK_JACK_WITH_QUEEN:
-                    # nothing, demand jack and queen
-                    initialForfeit = deck.discard(take_card(self.game_state, initial_player_id, Card.JACK, initialAgentInventory, initialAgent))
-                    give_card(deck.draw(), initialAgentInventory)
-
-                    turnForfeit = deck.discard(take_card(self.game_state, turn_player_id, Card.QUEEN, turnAgentInventory, turnAgent))
-                    give_card(deck.draw(), turnAgentInventory)
-                else:
-                    # pay, demand jack, demand card permanently
-                    take_money(3, initialAgentInventory)
-
-                    initialForfeit = deck.discard(take_card(self.game_state, initial_player_id, Card.JACK, initialAgentInventory, initialAgent))
-                    give_card(deck.draw(), initialAgentInventory)
-
-                    turnForfeit = deck.discard(take_card(self.game_state, turn_player_id, Card.ANY, turnAgentInventory, turnAgent))
-                    if has_lost(turnAgentInventory):
-                        turnForfeit = True
-
-            case Move.PLAY_TWO:
-                if len(self.game_state.current_sequence) > 1 and self.game_state.current_sequence[1] == Move.BLOCK_TWO_WITH_ACE:
-                    # nothing, demand two and ace
-                    initialForfeit = deck.discard(take_card(self.game_state, initial_player_id, Card.TWO, initialAgentInventory, initialAgent))
-                    give_card(deck.draw(), initialAgentInventory)
-
-                    turnForfeit = deck.discard(take_card(self.game_state, turn_player_id, Card.ACE, turnAgentInventory, turnAgent))
-                    give_card(deck.draw(), turnAgentInventory)
-                elif len(self.game_state.current_sequence) > 1 and self.game_state.current_sequence[1] == Move.BLOCK_TWO_WITH_TWO:
-                    # nothing, demand two and two
-                    initialForfeit = deck.discard(take_card(self.game_state, initial_player_id, Card.TWO, initialAgentInventory, initialAgent))
-                    give_card(deck.draw(), initialAgentInventory)
-
-                    turnForfeit = deck.discard(take_card(self.game_state, turn_player_id, Card.TWO, turnAgentInventory, turnAgent))
-                    give_card(deck.draw(), turnAgentInventory)
-                else:
-                    give_money(2, initialAgentInventory)
-                    take_money(2, turnAgentInventory)
-
-            case Move.PLAY_PLUS_ONE:
-                give_money(1, initialAgentInventory)
-
-            case Move.PLAY_PLUS_TWO:
-                if len(self.game_state.current_sequence) > 1 and self.game_state.current_sequence[1] == Move.BLOCK_PLUS_TWO_WITH_KING:
-                    # nothing, demand king
-                    turnForfeit = deck.discard(take_card(self.game_state, turn_player_id, Card.KING, turnAgentInventory, turnAgent))
-                    give_card(deck.draw(), turnAgentInventory)
-                else:
-                    give_money(2, initialAgentInventory)
-
-            case Move.PLAY_AFFAIR:
-                # demand card permanently
-                take_money(7, initialAgentInventory)
-                turnForfeit = deck.discard(take_card(self.game_state, turn_player_id, Card.ANY, turnAgentInventory, turnAgent))
-                if has_lost(turnAgentInventory):
-                    turnForfeit = True
-
-            case _:
-                print("Invalid move in the sequence")
-                raise RuntimeError
-            
-        return initialForfeit, turnForfeit
-        
+        try:
+            return start_functions[self.game_state.current_sequence[0]](
+                deck, initial_player_id, initial_agent, initial_inventory, 
+                turn_player_id, turn_agent, turn_inventory)
+        except KeyError:
+            print("Invalid move in the sequence")
+            raise RuntimeError
 
     def process_bluff(self):
         self.game_state.current_sequence = self.game_state.current_sequence[1:]
@@ -217,23 +307,25 @@ class Game:
             print("The processed move has an empty sequence")
             raise RuntimeError()
         
-        previousAgentID = (self.game_state.initial_player + len(self.game_state.current_sequence) - 2) % len(self.game_state.players)
-        previousAgentInventory = self.game_state.players[previousAgentID]
-        previousAgent = self.agents[previousAgentID]
+        previous_player_id = (self.game_state.initial_player + len(self.game_state.current_sequence) - 2) % len(self.game_state.players)
+        previous_inventory = self.game_state.players[previous_player_id]
+        previous_agent = self.agents[previous_player_id]
+        previous_player_info = PlayerInfo(self.game_state, previous_player_id)
 
         turn_player_id = self.game_state.turnPlayer
-        turnAgentInventory = self.game_state.players[turn_player_id]
-        turnAgent = self.agents[turn_player_id]
+        turn_inventory = self.game_state.players[turn_player_id]
+        turn_agent = self.agents[turn_player_id]
+        turn_player_info = PlayerInfo(self.game_state, turn_player_id)
 
-        if has_bluffed(self.game_state.current_sequence[-1], previousAgentInventory):
-            take_card(self.game_state, previousAgentID, Card.ANY, previousAgentInventory, previousAgent)
+        if has_bluffed(self.game_state.current_sequence[-1], previous_inventory):
+            take_card(Card.ANY, previous_inventory, previous_agent, previous_player_info)
             
-            if has_lost(previousAgentInventory):
+            if has_lost(previous_inventory):
                 self.new_game()
         else:
-            take_card(self.game_state, turn_player_id, Card.ANY, turnAgentInventory, turnAgent)
+            take_card(Card.ANY, turn_inventory, turn_agent, turn_player_info)
             
-            if has_lost(turnAgentInventory):
+            if has_lost(turn_inventory):
                 self.new_game()
             else:
                 self.process_move()
