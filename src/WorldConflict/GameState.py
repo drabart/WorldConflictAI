@@ -1,6 +1,6 @@
-from Inventory import Inventory
-from CardDeck import CardDeck
-from Move import Move
+from .Inventory import Inventory
+from .CardDeck import CardDeck
+from .Move import Move
 import random
 from copy import deepcopy
 

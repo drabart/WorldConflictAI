@@ -1,5 +1,5 @@
-from Move import Move
-from Card import Card
+from .Move import Move
+from .Card import Card
 
 class Inventory:
     money: int

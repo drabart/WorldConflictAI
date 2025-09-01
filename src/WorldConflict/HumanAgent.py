@@ -1,7 +1,7 @@
-from GameState import PlayerInfo
-from IAgent import IAgent
-from Card import Card
-from Move import Move
+from .GameState import PlayerInfo
+from .IAgent import IAgent
+from .Card import Card
+from .Move import Move
 
 class HumanAgent(IAgent):
     player_info: PlayerInfo

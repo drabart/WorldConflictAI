@@ -1,11 +1,11 @@
-from Move import Move
-from IAgent import IAgent
-from GameState import GameState, PlayerInfo
-from Card import Card
-from CardDeck import CardDeck
+from .Move import Move
+from .IAgent import IAgent
+from .GameState import GameState, PlayerInfo
+from .Card import Card
+from .CardDeck import CardDeck
+from .Inventory import Inventory
 from copy import deepcopy
 from typing import Sequence
-from Inventory import Inventory
 
 def has_lost(inventory: Inventory) -> bool:
         return inventory.cards == []
@@ -102,6 +102,7 @@ class Game:
 
     def __init__(self, agents: Sequence[IAgent]):
         self.agents = agents
+        self.game_state = GameState()
         self.new_game()
     
     def new_game(self):
@@ -361,7 +362,7 @@ class Game:
 
         return False
     
-    def process_game(self):
+    def process_game_step(self):
         move = take_move(deepcopy(self.game_state), self.game_state.players[self.game_state.turnPlayer], self.agents[self.game_state.turnPlayer])
         game_ended = self.make_move(move)
 

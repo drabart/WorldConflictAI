@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from GameState import PlayerInfo
-from Card import Card
-from Move import Move
+from .GameState import PlayerInfo
+from .Card import Card
+from .Move import Move
 
 class IAgent(ABC):
     def __init__(self) -> None:
