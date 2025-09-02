@@ -211,11 +211,10 @@ class Game:
         # demand ace, give 3 cards, demand 2 cards back
         initial_forfeit = deck.discard(take_card(Card.ACE, initial_inventory, initial_agent, initial_player_info))
         for _ in range(3):
-            draw = deck.draw()
-            give_card(draw, initial_inventory)
+            give_card(deck.draw(), initial_inventory)
         
-        take_card(Card.ANY, initial_inventory, initial_agent, initial_player_info)
-        take_card(Card.ANY, initial_inventory, initial_agent, initial_player_info)
+        initial_forfeit |= deck.discard(take_card(Card.ANY, initial_inventory, initial_agent, initial_player_info))
+        initial_forfeit |= deck.discard(take_card(Card.ANY, initial_inventory, initial_agent, initial_player_info))
 
         return initial_forfeit, turn_forfeit
     
@@ -337,18 +336,18 @@ class Game:
                 self.game_state.score[self.game_state.turnPlayer] += 1
                 return True
             case Move.OK:
-                initial_forfeit, turn_orfeit = self.process_move()
+                initial_forfeit, turn_forfeit = self.process_move()
 
                 self.game_state.initial_player = (self.game_state.initial_player + 1) % len(self.game_state.players)
                 self.game_state.turnPlayer = self.game_state.initial_player
 
-                if turn_orfeit:
+                if turn_forfeit:
                     self.game_state.score[self.game_state.turnPlayer] += 1
                 
                 if initial_forfeit:
                     self.game_state.score[self.game_state.initial_player] += 1
 
-                if turn_orfeit or initial_forfeit:
+                if turn_forfeit or initial_forfeit:
                     return True
                 
                 self.game_state.current_sequence = []

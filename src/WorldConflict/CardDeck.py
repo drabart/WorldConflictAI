@@ -15,10 +15,11 @@ class CardDeck:
             raise RuntimeError
         
         drawnCard = self.drawPile.pop()
-        if len(self.drawPile) == 1:
-            self.drawPile.extend(self.discardPile)
-            self.discardPile = []
-            self.shuffle()
+        # TODO consider if we should reshuffle after each game
+        # if len(self.drawPile) == 1:
+        #     self.drawPile.extend(self.discardPile)
+        #     self.discardPile = []
+        #     self.shuffle()
 
         return drawnCard
 

@@ -145,7 +145,7 @@ def test_plus_two_ok():
     assert game_state.deck.discardPile == []
 
 def test_ace_ok():
-    agent1 = MockAgent([Move.PLAY_ACE], [Card.KING, Card.JACK, Card.TWO])
+    agent1 = MockAgent([Move.PLAY_ACE], [Card.ACE, Card.JACK, Card.TWO])
     agent2 = MockAgent([Move.OK], [])
     
     game = Game([agent1, agent2])
@@ -159,8 +159,8 @@ def test_ace_ok():
     game_state.turnPlayer = 0
 
     player1_inventory = Inventory()
-    player1_inventory.cards.append(Card.KING)
-    player1_inventory.cards.append(Card.KING)
+    player1_inventory.cards.append(Card.ACE)
+    player1_inventory.cards.append(Card.ACE)
     player2_inventory = Inventory()
     player2_inventory.cards.append(Card.QUEEN)
     player2_inventory.cards.append(Card.QUEEN)
@@ -172,7 +172,7 @@ def test_ace_ok():
     game.process_game_step()
 
     assert player1_inventory.money == 2
-    assert Counter(player1_inventory.cards) == Counter([Card.KING, Card.JACK])
+    assert Counter(player1_inventory.cards) == Counter([Card.ACE, Card.JACK])
 
     assert player2_inventory.money == 2
     assert Counter(player2_inventory.cards) == Counter([Card.QUEEN, Card.QUEEN])
@@ -180,6 +180,6 @@ def test_ace_ok():
     assert game_state.initial_player == 1
     assert game_state.turnPlayer == 1
 
-    assert game_state.deck.drawPile == []
-    assert game_state.deck.discardPile == [Card.KING, Card.JACK, Card.TWO]
+    assert Counter(game_state.deck.drawPile) == Counter([])
+    assert game_state.deck.discardPile == [Card.ACE, Card.JACK, Card.TWO]
 
