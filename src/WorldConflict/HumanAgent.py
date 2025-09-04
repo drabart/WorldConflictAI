@@ -52,11 +52,11 @@ else state.player.get_legal_moves(state.current_sequence[-1])}""")
                 return Move.PLAY_KING
             case "pa":
                 return Move.PLAY_ACE
-            case "a":
+            case "paf":
                 return Move.PLAY_AFFAIR
-            case "p1":
+            case "pp1":
                 return Move.PLAY_PLUS_ONE
-            case "p2":
+            case "pp2":
                 return Move.PLAY_PLUS_TWO
             case "bjwq":
                 return Move.BLOCK_JACK_WITH_QUEEN

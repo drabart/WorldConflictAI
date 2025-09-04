@@ -404,6 +404,6 @@ class Game:
         game_ended = self.make_move(move)
 
         if game_ended:
-            self.game_state.reset()
+            self.new_game()
 
 
