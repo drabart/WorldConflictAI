@@ -6,11 +6,12 @@
     "configurations": [
 
         {
-            "name": "Run game",
+            "name": "Run Game",
             "type": "debugpy",
             "request": "launch",
-            "program": "src/WorldConflict/main.py",
-            "console": "integratedTerminal"
+            "module": "WorldConflict.main",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/src"
         },
         {
             "name": "Debug pytest",
