@@ -6,6 +6,7 @@ from WorldConflict.GameState import GameState, PlayerInfo
 from WorldConflict.Inventory import Inventory
 from WorldConflict.CardDeck import CardDeck
 
+from unittest.mock import Mock
 from collections import Counter
 
 class MockAgent(IAgent):
@@ -459,3 +460,208 @@ def test_block_plus_two_with_king():
 
     assert game_state.deck.drawPile == []
     assert game_state.deck.discardPile == [Card.KING]
+
+def test_block_jack_with_queen():
+    agent1 = MockAgent([Move.PLAY_JACK, Move.OK], [Card.JACK])
+    agent2 = MockAgent([Move.BLOCK_JACK_WITH_QUEEN], [Card.QUEEN])
+    
+    game = Game([agent1, agent2])
+    game_state = GameState()
+
+    deck = CardDeck()
+    deck.drawPile = [Card.ACE, Card.TWO]
+
+    game_state.deck = deck
+    game_state.initial_player = 0
+    game_state.turn_player = 0
+
+    player1_inventory = Inventory()
+    player1_inventory.cards.append(Card.JACK)
+    player1_inventory.cards.append(Card.ACE)
+    player1_inventory.money = 4
+    player2_inventory = Inventory()
+    player2_inventory.cards.append(Card.KING)
+    player2_inventory.cards.append(Card.QUEEN)
+
+    game_state.players = [player1_inventory, player2_inventory]
+    game.game_state = game_state
+
+    game.process_game_step()
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 4
+    assert Counter(player1_inventory.cards) == Counter([Card.TWO, Card.ACE])
+
+    assert player2_inventory.money == 2
+    assert Counter(player2_inventory.cards) == Counter([Card.ACE, Card.KING])
+
+    assert game_state.initial_player == 1
+    assert game_state.turn_player == 1
+
+    assert game_state.deck.drawPile == []
+    assert game_state.deck.discardPile == [Card.JACK, Card.QUEEN]
+
+def test_block_two_with_two():
+    agent1 = MockAgent([Move.PLAY_TWO, Move.OK], [Card.TWO])
+    agent2 = MockAgent([Move.BLOCK_TWO_WITH_TWO], [Card.TWO])
+    
+    game = Game([agent1, agent2])
+    game_state = GameState()
+
+    deck = CardDeck()
+    deck.drawPile = [Card.ACE, Card.TWO]
+
+    game_state.deck = deck
+    game_state.initial_player = 0
+    game_state.turn_player = 0
+
+    player1_inventory = Inventory()
+    player1_inventory.cards.append(Card.TWO)
+    player1_inventory.cards.append(Card.ACE)
+    player2_inventory = Inventory()
+    player2_inventory.cards.append(Card.KING)
+    player2_inventory.cards.append(Card.TWO)
+
+    game_state.players = [player1_inventory, player2_inventory]
+    game.game_state = game_state
+
+    game.process_game_step()
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 2
+    assert Counter(player1_inventory.cards) == Counter([Card.TWO, Card.ACE])
+
+    assert player2_inventory.money == 2
+    assert Counter(player2_inventory.cards) == Counter([Card.ACE, Card.KING])
+
+    assert game_state.initial_player == 1
+    assert game_state.turn_player == 1
+
+    assert game_state.deck.drawPile == []
+    assert game_state.deck.discardPile == [Card.TWO, Card.TWO]
+
+def test_block_two_with_ace():
+    agent1 = MockAgent([Move.PLAY_TWO, Move.OK], [Card.TWO])
+    agent2 = MockAgent([Move.BLOCK_TWO_WITH_ACE], [Card.ACE])
+    
+    game = Game([agent1, agent2])
+    game_state = GameState()
+
+    deck = CardDeck()
+    deck.drawPile = [Card.ACE, Card.TWO]
+
+    game_state.deck = deck
+    game_state.initial_player = 0
+    game_state.turn_player = 0
+
+    player1_inventory = Inventory()
+    player1_inventory.cards.append(Card.TWO)
+    player1_inventory.cards.append(Card.ACE)
+    player2_inventory = Inventory()
+    player2_inventory.cards.append(Card.KING)
+    player2_inventory.cards.append(Card.ACE)
+
+    game_state.players = [player1_inventory, player2_inventory]
+    game.game_state = game_state
+
+    game.process_game_step()
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 2
+    assert Counter(player1_inventory.cards) == Counter([Card.TWO, Card.ACE])
+
+    assert player2_inventory.money == 2
+    assert Counter(player2_inventory.cards) == Counter([Card.ACE, Card.KING])
+
+    assert game_state.initial_player == 1
+    assert game_state.turn_player == 1
+
+    assert game_state.deck.drawPile == []
+    assert game_state.deck.discardPile == [Card.TWO, Card.ACE]
+
+def test_bluff_not_checked():
+    agent1 = MockAgent([Move.PLAY_TWO, Move.OK], [Card.JACK])
+    agent2 = MockAgent([Move.BLOCK_TWO_WITH_TWO], [Card.QUEEN])
+    
+    game = Game([agent1, agent2])
+    game_state = GameState()
+
+    deck = CardDeck()
+    deck.drawPile = [Card.ACE, Card.TWO]
+
+    game_state.deck = deck
+    game_state.initial_player = 0
+    game_state.turn_player = 0
+
+    player1_inventory = Inventory()
+    player1_inventory.cards.append(Card.JACK)
+    player1_inventory.cards.append(Card.ACE)
+    player2_inventory = Inventory()
+    player2_inventory.cards.append(Card.KING)
+    player2_inventory.cards.append(Card.QUEEN)
+
+    game_state.players = [player1_inventory, player2_inventory]
+    game.game_state = game_state
+
+    game.process_game_step()
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 2
+    assert Counter(player1_inventory.cards) == Counter([Card.TWO, Card.ACE])
+
+    assert player2_inventory.money == 2
+    assert Counter(player2_inventory.cards) == Counter([Card.ACE, Card.KING])
+
+    assert game_state.initial_player == 1
+    assert game_state.turn_player == 1
+
+    assert game_state.deck.drawPile == []
+    assert game_state.deck.discardPile == [Card.JACK, Card.QUEEN]
+
+def test_call_bluff_on_second():
+    agent1 = MockAgent([Move.PLAY_JACK, Move.CALL_BLUFF], [Card.JACK])
+    agent2 = MockAgent([Move.BLOCK_JACK_WITH_QUEEN], [Card.TWO, Card.KING])
+    
+    game = Game([agent1, agent2])
+    game_state = GameState()
+
+    deck = CardDeck()
+    deck.drawPile = [Card.TWO]
+
+    game_state.deck = deck
+    game_state.initial_player = 0
+    game_state.turn_player = 0
+
+    player1_inventory = Inventory()
+    player1_inventory.cards.append(Card.JACK)
+    player1_inventory.cards.append(Card.ACE)
+    player1_inventory.money = 4
+    player2_inventory = Inventory()
+    player2_inventory.cards.append(Card.KING)
+    player2_inventory.cards.append(Card.TWO)
+
+    game_state.players = [player1_inventory, player2_inventory]
+
+    game.game_state = game_state
+    game_state.reset = Mock()
+
+    game.process_game_step()
+    game.process_game_step()
+    game.process_game_step()
+
+    game_state.reset.assert_called_once()
+
+    assert player1_inventory.money == 1
+    assert Counter(player1_inventory.cards) == Counter([Card.TWO, Card.ACE])
+
+    assert player2_inventory.money == 2
+    assert Counter(player2_inventory.cards) == Counter([])
+
+    assert game_state.deck.drawPile == []
+    assert game_state.deck.discardPile == [Card.JACK, Card.TWO, Card.KING]
+
+    assert game_state.score == [1, 0]

@@ -7,6 +7,12 @@ from .Inventory import Inventory
 from copy import deepcopy
 from typing import Sequence
 
+PLAYER_LOST = True
+PLAYER_OK = False
+
+GAME_ENDED = True
+GAME_CONTINUES = False
+
 def has_lost(inventory: Inventory) -> bool:
         return inventory.cards == []
     
@@ -155,8 +161,8 @@ class Game:
 
     def jack_start(self, deck: CardDeck, initial_player_id: int, initial_agent: IAgent, initial_inventory: Inventory,
                   responding_player_id: int, responding_agent: IAgent, responding_inventory: Inventory) -> tuple[bool, bool]:
-        initial_forfeit = False
-        responding_forfeit = False
+        initial_forfeit = PLAYER_OK
+        responding_forfeit = PLAYER_OK
 
         sequence = self.game_state.current_sequence
         if len(sequence) > 2:
@@ -303,7 +309,7 @@ class Game:
             print("Invalid move in the sequence")
             raise RuntimeError
 
-    def process_bluff(self):
+    def process_bluff(self) -> tuple[bool, bool]:
         if not self.game_state.current_sequence:
             print("The processed move has an empty sequence")
             raise RuntimeError()
@@ -319,41 +325,69 @@ class Game:
         previous_player_info = PlayerInfo(self.game_state, previous_player_id)
 
         if has_bluffed(self.game_state.current_sequence[-1], previous_inventory):
+            # bluff got caught
+            self.game_state.current_sequence = self.game_state.current_sequence[:-1]
+
+            if len(self.game_state.current_sequence) != 0:
+                initial_lost, responding_lost = self.process_move()
+                if initial_lost or responding_lost:
+                    return initial_lost, responding_lost
+
             self.game_state.deck.discard(take_card(Card.ANY, previous_inventory, previous_agent, previous_player_info))
             
             if has_lost(previous_inventory):
-                self.new_game()
-        else:
-            if has_lost(turn_inventory):
-                self.new_game()
-            else:
-                self.process_move()
+                if previous_player_id == self.game_state.initial_player:
+                    return PLAYER_LOST, PLAYER_OK
+                else:
+                    return PLAYER_OK, PLAYER_LOST
 
+            return PLAYER_OK, PLAYER_OK
+        else:
+            # got checked, but was right
+            initial_lost, responding_lost = self.process_move()
+            
             self.game_state.deck.discard(take_card(Card.ANY, turn_inventory, turn_agent, turn_player_info))
+
+            if has_lost(turn_inventory):
+                if turn_player_id == self.game_state.initial_player:
+                    return PLAYER_LOST, PLAYER_OK
+                else:
+                    return PLAYER_OK, PLAYER_LOST
+            
+            return PLAYER_OK, PLAYER_OK
 
     def make_move(self, move: Move) -> bool:
         match move:
             case Move.FORFEIT:
-                self.game_state.score[self.game_state.turn_player] += 1
-                return True
+                self.game_state.score[self.game_state.turn_player ^ 1] += 1
+                return GAME_ENDED
             case Move.OK:
-                initial_forfeit, turn_forfeit = self.process_move()
+                initial_forfeit, responding_forfeit = self.process_move()
 
-                self.game_state.initial_player = (self.game_state.initial_player + 1) % len(self.game_state.players)
-                self.game_state.turn_player = self.game_state.initial_player
-
-                if turn_forfeit:
-                    self.game_state.score[self.game_state.turn_player] += 1
+                if responding_forfeit:
+                    self.game_state.score[self.game_state.initial_player] += 1
                 
                 if initial_forfeit:
-                    self.game_state.score[self.game_state.initial_player] += 1
+                    self.game_state.score[self.game_state.initial_player ^ 1] += 1
 
-                if turn_forfeit or initial_forfeit:
-                    return True
+                if responding_forfeit or initial_forfeit:
+                    return GAME_ENDED
                 
+                self.game_state.initial_player ^= 1
+                self.game_state.turn_player = self.game_state.initial_player
+
                 self.game_state.current_sequence = []
             case Move.CALL_BLUFF:
-                self.process_bluff()
+                initial_forfeit, responding_forfeit = self.process_bluff()
+
+                if responding_forfeit:
+                    self.game_state.score[self.game_state.initial_player] += 1
+                
+                if initial_forfeit:
+                    self.game_state.score[self.game_state.initial_player ^ 1] += 1
+
+                if responding_forfeit or initial_forfeit:
+                    return GAME_ENDED
 
                 self.game_state.initial_player ^= 1
                 self.game_state.turn_player = self.game_state.initial_player
@@ -363,7 +397,7 @@ class Game:
                 self.game_state.current_sequence.append(move)
                 self.game_state.turn_player ^= 1
 
-        return False
+        return GAME_CONTINUES
     
     def process_game_step(self):
         move = take_move(deepcopy(self.game_state), self.game_state.players[self.game_state.turn_player], self.agents[self.game_state.turn_player])

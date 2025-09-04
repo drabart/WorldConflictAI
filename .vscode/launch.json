@@ -9,7 +9,7 @@
             "name": "Run game",
             "type": "debugpy",
             "request": "launch",
-            "program": "main.py",
+            "program": "src/WorldConflict/main.py",
             "console": "integratedTerminal"
         },
         {
@@ -23,6 +23,6 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": true
-            }
+        }
     ]
 }
