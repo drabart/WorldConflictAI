@@ -647,13 +647,13 @@ def test_call_bluff_on_second():
     game_state.players = [player1_inventory, player2_inventory]
 
     game.game_state = game_state
-    game_state.reset = Mock()
+    game.new_game = Mock()
 
     game.process_game_step()
     game.process_game_step()
     game.process_game_step()
 
-    game_state.reset.assert_called_once()
+    game.new_game.assert_called_once()
 
     assert player1_inventory.money == 1
     assert Counter(player1_inventory.cards) == Counter([Card.TWO, Card.ACE])
@@ -665,3 +665,98 @@ def test_call_bluff_on_second():
     assert game_state.deck.discardPile == [Card.JACK, Card.TWO, Card.KING]
 
     assert game_state.score == [1, 0]
+
+def test_longer_game():
+    agent1_move_set: list[Move] = []
+    agent2_move_set: list[Move] = []
+    deck = CardDeck()
+    deck.drawPile = []
+
+    agent1_card_drop_order: list[Card] = []
+    agent2_card_drop_order: list[Card] = []
+
+    agent1_move_set += [Move.PLAY_TWO]
+    agent2_move_set += [Move.OK]
+    agent1_card_drop_order += [Card.TWO]
+    agent2_card_drop_order += []
+    deck.drawPile = [Card.QUEEN] + deck.drawPile
+
+    agent1_move_set += [Move.OK]
+    agent2_move_set += [Move.PLAY_KING]
+    agent1_card_drop_order += []
+    agent2_card_drop_order += [Card.KING]
+    deck.drawPile = [Card.TWO] + deck.drawPile
+
+    agent1_move_set += [Move.PLAY_JACK]
+    agent2_move_set += [Move.CALL_BLUFF]
+    agent1_card_drop_order += [Card.QUEEN]
+    agent2_card_drop_order += []
+    deck.drawPile = [] + deck.drawPile
+
+    agent1_move_set += [Move.CALL_BLUFF]
+    agent2_move_set += [Move.PLAY_JACK]
+    agent1_card_drop_order += [Card.QUEEN]
+    agent2_card_drop_order += [Card.JACK]
+    deck.drawPile = [Card.ACE] + deck.drawPile
+
+    agent1 = MockAgent(agent1_move_set, agent1_card_drop_order)
+    agent2 = MockAgent(agent2_move_set, agent2_card_drop_order)
+    
+    game = Game([agent1, agent2])
+    game_state = GameState()
+
+    game_state.deck = deck
+    game_state.initial_player = 0
+    game_state.turn_player = 0
+
+    player1_inventory = Inventory()
+    player1_inventory.cards.append(Card.TWO)
+    player1_inventory.cards.append(Card.QUEEN)
+    player2_inventory = Inventory()
+    player2_inventory.cards.append(Card.JACK)
+    player2_inventory.cards.append(Card.KING)
+
+    game_state.players = [player1_inventory, player2_inventory]
+
+    game.game_state = game_state
+    game.new_game = Mock()
+
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 4
+    assert Counter(player1_inventory.cards) == Counter([Card.QUEEN, Card.QUEEN])
+    assert player2_inventory.money == 0
+    assert Counter(player2_inventory.cards) == Counter([Card.JACK, Card.KING])
+
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 4
+    assert Counter(player1_inventory.cards) == Counter([Card.QUEEN, Card.QUEEN])
+    assert player2_inventory.money == 3
+    assert Counter(player2_inventory.cards) == Counter([Card.JACK, Card.TWO])
+
+    game.process_game_step()
+    game.process_game_step()
+
+    assert player1_inventory.money == 4
+    assert Counter(player1_inventory.cards) == Counter([Card.QUEEN])
+    assert player2_inventory.money == 3
+    assert Counter(player2_inventory.cards) == Counter([Card.JACK, Card.TWO])
+
+    game.process_game_step()
+    game.process_game_step()
+
+    game.new_game.assert_called_once()
+
+    assert player1_inventory.money == 4
+    assert Counter(player1_inventory.cards) == Counter([])
+
+    assert player2_inventory.money == 0
+    assert Counter(player2_inventory.cards) == Counter([Card.TWO, Card.ACE])
+
+    assert game_state.deck.drawPile == []
+    assert game_state.deck.discardPile == [Card.TWO, Card.KING, Card.QUEEN, Card.JACK, Card.QUEEN]
+
+    assert game_state.score == [0, 1]

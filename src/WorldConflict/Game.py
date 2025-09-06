@@ -345,6 +345,8 @@ class Game:
         else:
             # got checked, but was right
             initial_lost, responding_lost = self.process_move()
+            if initial_lost or responding_lost:
+                return initial_lost, responding_lost
             
             self.game_state.deck.discard(take_card(Card.ANY, turn_inventory, turn_agent, turn_player_info))
 
